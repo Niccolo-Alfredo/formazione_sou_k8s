@@ -1,32 +1,51 @@
 # syntax=docker/dockerfile:1.4
+# Usa la piattaforma di build per garantire la compatibilità
 FROM --platform=$BUILDPLATFORM python:3.10-alpine AS builder
 
+# Imposta la directory di lavoro all'interno del container
 WORKDIR /app
 
-# Crea un utente non-root e passa a quell'utente
-# UID/GID 1000 è comune per gli utenti non-root, ma puoi scegliere altro.
+# Crea un gruppo e un utente non-root per l'applicazione
+# È buona pratica non eseguire l'applicazione come 'root' per motivi di sicurezza
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+
+# Passa all'utente non-root appena creato
 USER appuser
 
+# Crea la directory per la cache di pip nella home dell'utente e imposta i permessi corretti
+# Questo risolve il warning "The directory '/home/appuser/.cache/pip' ... is not owned or is not writable"
+RUN mkdir -p /home/appuser/.cache/pip && chown -R appuser:appgroup /home/appuser/.cache
+
+# Copia il file delle dipendenze Python nella directory di lavoro
 COPY requirements.txt ./
-# Installa le dipendenze come utente non-root.
-# Il mount di tipo cache è ancora utile per velocizzare le successive build.
+
+# Installa le dipendenze usando pip.
+# Il mount di tipo cache è usato per riutilizzare i pacchetti scaricati nelle build successive,
+# velocizzando il processo e riducendo il traffico di rete.
 RUN --mount=type=cache,target=/home/appuser/.cache/pip \
     pip3 install -r requirements.txt
 
-COPY app.py ./ 
-# Copia solo il file app.py
-# Se ci fossero altri file necessari per l'esecuzione, li copieresti qui
-# ad esempio: COPY templates/ ./templates/
+# Copia il file dell'applicazione Python nella directory di lavoro
+# Assicurati che tutti i file necessari all'applicazione siano copiati qui.
+# Se ci fossero sottocartelle (es. templates, static), andrebbero copiate separatamente:
+# COPY templates/ ./templates/
+# COPY static/ ./static/
+COPY app.py ./
 
+# Espone la porta su cui l'applicazione Flask sarà in ascolto
 EXPOSE 8000
 
+# Definisce il comando predefinito per avviare l'applicazione
+# ENTRYPOINT definisce il comando principale del container
 ENTRYPOINT ["python3"]
+# CMD definisce gli argomenti passati a ENTRYPOINT
 CMD ["app.py"]
 
-
-# La stage 'dev-envs' non è più rilevante per la build finale di Jenkins,
-# ma la lascio commentata se volessi tenerla per usi di sviluppo locali.
+# --------------------------------------------------------------------------------------
+# Questa è la stage per l'ambiente di sviluppo.
+# Non viene utilizzata dalla pipeline Jenkins (grazie a --target builder),
+# ma può essere utile per lo sviluppo locale con strumenti aggiuntivi.
+# --------------------------------------------------------------------------------------
 # FROM builder as dev-envs
 #
 # RUN <<EOF
