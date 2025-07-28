@@ -15,7 +15,7 @@ pipeline {
     // Assicurati che lo strumento Git sia configurato in "Manage Jenkins" -> "Global Tool Configuration"
     // con il nome 'DefaultGit' (o il nome che gli hai dato).
     tools {
-        git 'DefaultGit' // Questo associa lo strumento Git configurato globalmente
+        git 'Default' // Questo associa lo strumento Git configurato globalmente
     }
 
     // Variabili di ambiente globali per la pipeline
