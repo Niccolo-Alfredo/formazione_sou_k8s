@@ -1,5 +1,4 @@
 // Jenkinsfile
-// Pipeline Jenkins dichiarativa per la build e il push di un'immagine Docker
 
 // Definizione della funzione helper per la build e il push dell'immagine Docker
 // Questa funzione incapsula la logica di tagging e interazione con Docker Hub.
