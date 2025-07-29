@@ -121,8 +121,14 @@ pipeline {
                     // Preleva le informazioni necessarie dal contesto di Jenkins
                     // env.GIT_TAG_NAME è popolato solo se la build è da un tag Git
                     def gitTagName = env.GIT_TAG_NAME
-                    // env.BRANCH_NAME contiene il nome del branch (es. 'main', 'develop', 'feature/xyz')
-                    def branchName = env.BRANCH_NAME
+
+                    // Ottiene il nome del branch dal repository Git stesso per massima robustezza.
+                    // Questo funziona anche se env.BRANCH_NAME non è popolato correttamente da Jenkins.
+                    // 'git rev-parse --abbrev-ref HEAD' restituisce il nome del branch corrente (es. 'main', 'develop').
+                    // '.trim()' rimuove eventuali spazi bianchi o newline.
+                    def currentBranch = sh(returnStdout: true, script: 'git rev-parse --abbrev-ref HEAD').trim()
+                    def branchName = currentBranch // Usa questo per la logica di buildAndPushMyDockerImage
+
                     // env.GIT_COMMIT contiene l'SHA completo del commit Git
                     def gitCommitShortSha = env.GIT_COMMIT ? env.GIT_COMMIT.substring(0, 7) : 'unknown' // Aggiunta gestione per GIT_COMMIT nullo
 
