@@ -11,7 +11,7 @@ def buildAndPushMyDockerImage(config) {
         dockerfileDir: './app',
         dockerfileName: 'Dockerfile',
         gitTagName: null,
-        branchName: null,
+        branchName: null, // Questo sarà il nome del branch effettivo o null
         gitCommitShortSha: null
     ]
     // Unisci i parametri forniti con i valori predefiniti
@@ -22,7 +22,7 @@ def buildAndPushMyDockerImage(config) {
 
     // Logica per determinare il tag dell'immagine Docker
     if (config.gitTagName) {
-        // Caso 1: Build da un tag Git
+        // Caso 1: Build da un tag Git (env.GIT_TAG_NAME è popolato)
         buildTag = config.gitTagName
         echo "Building from Git tag: '${buildTag}'"
     } else if (config.branchName == 'main' || config.branchName == 'master') {
@@ -34,20 +34,23 @@ def buildAndPushMyDockerImage(config) {
         // Caso 3: Build dal branch 'develop'
         buildTag = "develop-${config.gitCommitShortSha}"
         echo "Building from 'develop' branch. Image tag will be: '${buildTag}'"
-    } else if (config.branchName != null) { // Questo gestisce altri branch come 'feature/xyz'
-        // Caso 4: Build da altri branch (es. feature branches)
+    } else if (config.branchName != null) {
+        // Caso 4: Build da altri branch (es. feature branches), quando branchName è popolato
         // Sostituisce i '/' con '-' per avere un tag Docker valido
         def sanitizedBranchName = config.branchName.replaceAll('/', '-')
         buildTag = "${sanitizedBranchName}-${config.gitCommitShortSha}"
         echo "Building from branch '${config.branchName}'. Image tag will be: '${buildTag}'"
     } else {
-        // Caso di fallback: branchName è nullo (es. build triggerata da un SHA specifico, non un branch o tag)
-        // Utilizziamo un tag basato sull'SHA del commit per chiarezza.
+        // Caso di fallback: branchName è nullo e non è un tag Git esplicito.
+        // Questo può succedere se env.BRANCH_NAME e env.GIT_TAG_NAME sono entrambi nulli,
+        // o se la build è triggerata da un SHA specifico non associato a un branch/tag noto.
         buildTag = "commit-${config.gitCommitShortSha}"
-        echo "Warning: Branch name is null and not a tag build. Building with tag: '${buildTag}'"
+        echo "Warning: Branch name is null or could not be determined. Building with tag: '${buildTag}'"
     }
 
     // Interazione con Docker Hub in modo sicuro usando le credenziali Jenkins
+    // Questo blocco gestisce l'autenticazione Docker Hub in modo sicuro.
+    // NON ci dovrebbero essere chiamate esplicite a docker login qui.
     docker.withRegistry('https://index.docker.io/v1/', config.dockerHubCredsId) {
         // Costruisci l'immagine Docker
         // Usiamo il 'buildTag' determinato dalla logica
@@ -118,9 +121,14 @@ pipeline {
                     // Preleva le informazioni necessarie dal contesto di Jenkins
                     // env.GIT_TAG_NAME è popolato solo se la build è da un tag Git
                     def gitTagName = env.GIT_TAG_NAME
-                    // env.BRANCH_NAME contiene il nome del branch (es. 'main', 'develop', 'feature/xyz')
-                    // Questo è il modo più affidabile per ottenere il nome del branch per le build da branch.
-                    def branchName = env.BRANCH_NAME
+
+                    // --- MODIFICA CHIAVE QUI ---
+                    // Utilizza env.GIT_BRANCH come prima scelta per il nome del branch,
+                    // poi fallback a env.BRANCH_NAME.
+                    // Questo è spesso più affidabile per i job Pipeline.
+                    def branchName = env.GIT_BRANCH ?: env.BRANCH_NAME
+                    // --- FINE MODIFICA CHIAVE ---
+
                     // env.GIT_COMMIT contiene l'SHA completo del commit Git
                     def gitCommitShortSha = env.GIT_COMMIT ? env.GIT_COMMIT.substring(0, 7) : 'unknown'
 
@@ -129,7 +137,7 @@ pipeline {
                         imageName: DOCKER_IMAGE_NAME,
                         dockerHubCredsId: DOCKER_HUB_CREDENTIALS_ID,
                         gitTagName: gitTagName,
-                        branchName: branchName, // Ora dovrebbe essere corretto
+                        branchName: branchName, // Ora dovrebbe essere più affidabile
                         gitCommitShortSha: gitCommitShortSha
                     )
                 }
