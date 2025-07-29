@@ -1,78 +1,131 @@
 // Jenkinsfile
 // Pipeline Jenkins dichiarativa per la build e il push di un'immagine Docker
 
+// Definizione della funzione helper per la build e il push dell'immagine Docker
+// Questa funzione incapsula la logica di tagging e interazione con Docker Hub.
+def buildAndPushMyDockerImage(config) {
+    // Definisci i valori predefiniti per i parametri della funzione
+    def defaults = [
+        imageName: 'niccoloalfredo/flask-app-example', // Sostituisci con il tuo username Docker Hub
+        dockerHubCredsId: 'docker-hub-credentials',
+        dockerfileDir: './app',
+        dockerfileName: 'Dockerfile',
+        gitTagName: null,
+        branchName: null,
+        gitCommitShortSha: null
+    ]
+    // Unisci i parametri forniti con i valori predefiniti
+    config = defaults + config
+
+    def buildTag // Il tag che useremo per la build e il push principale
+    def shouldPushLatest = false // Flag per decidere se pushare anche il tag 'latest'
+
+    // Logica per determinare il tag dell'immagine Docker
+    if (config.gitTagName) {
+        // Caso 1: Build da un tag Git
+        buildTag = config.gitTagName
+        echo "Building from Git tag: '${buildTag}'"
+    } else if (config.branchName == 'main' || config.branchName == 'master') { // Aggiunto 'master' per compatibilità
+        // Caso 2: Build dal branch 'main' (o 'master')
+        buildTag = 'latest' // Il tag principale per la main è 'latest'
+        shouldPushLatest = true // In questo caso, pushiamo anche il tag 'latest'
+        echo "Building from '${config.branchName}' branch. Image tag will be: '${buildTag}'"
+    } else if (config.branchName == 'develop') {
+        // Caso 3: Build dal branch 'develop'
+        buildTag = "develop-${config.gitCommitShortSha}"
+        echo "Building from 'develop' branch. Image tag will be: '${buildTag}'"
+    } else {
+        // Caso 4: Build da altri branch (es. feature branches)
+        // Sostituisce i '/' con '-' per avere un tag Docker valido
+        def sanitizedBranchName = config.branchName.replaceAll('/', '-')
+        buildTag = "${sanitizedBranchName}-${config.gitCommitShortSha}"
+        echo "Building from branch '${config.branchName}'. Image tag will be: '${buildTag}'"
+    }
+
+    // Interazione con Docker Hub in modo sicuro usando le credenziali Jenkins
+    docker.withRegistry('https://index.docker.io/v1/', config.dockerHubCredsId) {
+        // Costruisci l'immagine Docker
+        // Usiamo il 'buildTag' determinato dalla logica
+        // --target builder specifica la fase di build leggera nel Dockerfile
+        // -f specifica il Dockerfile
+        def image = docker.build("${config.imageName}:${buildTag}", "--target builder ${config.dockerfileDir} -f ${config.dockerfileDir}/${config.dockerfileName}")
+        echo "Docker image built: ${config.imageName}:${buildTag}"
+
+        // Push dell'immagine con il tag specifico (es. v1.0.0, develop-SHA, latest)
+        image.push(buildTag)
+        echo "Pushed ${config.imageName}:${buildTag} to Docker Hub."
+
+        // Se la build proviene dal branch 'main', pushiamo anche il tag 'latest'
+        if (shouldPushLatest) {
+            // L'oggetto 'image' ha già il riferimento all'immagine con il buildTag,
+            // pushare 'latest' automaticamente la tagga localmente e poi la pusha.
+            image.push("latest")
+            echo "Pushed ${config.imageName}:latest to Docker Hub (from ${config.branchName} branch)."
+        }
+
+        // Opzionale: pulizia delle immagini Docker locali dopo il push
+        // Commentato per default in quanto Jenkins spesso gestisce la pulizia degli agenti
+        // sh "docker rmi --force ${config.imageName}:${buildTag}"
+        // if (shouldPushLatest) {
+        //     sh "docker rmi --force ${config.imageName}:latest"
+        // }
+    }
+}
+
+
 pipeline {
     // Agente che esegue la pipeline. 'agent-1' è il nome che abbiamo dato al tuo agente.
     agent {
         node {
-            label 'agent-1' // Assicurati che questo corrisponda al label del tuo Jenkins Agent
-            // Se usi un workspace specifico sul tuo agente, potresti definire customWorkspace
-            // customWorkspace "${env.WORKSPACE}"
+            label 'agent-1'
         }
     }
 
     // Configurazione degli strumenti globali di Jenkins
-    // Assicurati che lo strumento Git sia configurato in "Manage Jenkins" -> "Global Tool Configuration"
-    // con il nome 'DefaultGit' (o il nome che gli hai dato).
     tools {
-        git 'Default' // Questo associa lo strumento Git configurato globalmente
+        git 'Default' // Nome dello strumento Git configurato globalmente in Jenkins
     }
 
     // Variabili di ambiente globali per la pipeline
     environment {
-        // Il nome dell'immagine Docker. Sostituisci 'niccoloalfredo' con il tuo username Docker Hub.
+        // Il nome base dell'immagine Docker. Sostituisci 'niccoloalfredo' con il tuo username Docker Hub.
         DOCKER_IMAGE_NAME = 'niccoloalfredo/flask-app-example'
-        // Il tag dell'immagine. Utilizziamo il numero di build di Jenkins per un tag unico.
-        DOCKER_IMAGE_TAG = "${env.BUILD_NUMBER}"
         // L'ID delle credenziali Docker Hub configurate in Jenkins
-        // Devi configurare le tue credenziali Docker Hub in Jenkins:
-        // "Manage Jenkins" -> "Manage Credentials" -> "(global)" -> "Add Credentials"
-        // Tipo: "Username with password", ID: "docker-hub-credentials", Username/Password del tuo Docker Hub.
         DOCKER_HUB_CREDENTIALS_ID = 'docker-hub-credentials'
     }
 
     // Definizione delle fasi della pipeline
     stages {
         // Fase di Checkout del codice dal repository Git
-        // La fase 'Declarative: Checkout SCM' è spesso gestita automaticamente dalla Pipeline Dichiarativa
-        // quando il job è configurato con "Pipeline script from SCM".
-        // Manteniamo una fase esplicita per maggiore chiarezza se necessario, ma non è strettamente obbligatoria se il SCM è configurato a livello di job.
         stage('Checkout SCM') {
             steps {
                 // Clona il repository Git specificato.
-                // L'uso di "scm" qui si riferisce alla configurazione SCM del job Jenkins.
-                // Se la tua repo è privata, assicurati che le credenziali siano impostate a livello di job.
-                git branch: 'main', url: 'https://github.com/Niccolo-Alfredo/formazione_sou_k8s.git'
+                // Usiamo 'checkout scm' per sfruttare la configurazione SCM del job Jenkins,
+                // che ora dovrebbe essere impostata per monitorare tutti i branch e tag ('**').
+                checkout scm
             }
         }
 
-        // Fase di Build dell'immagine Docker
-        stage('Build Docker Image') {
+        // Fase che combina la determinazione del tag, la build e il push dell'immagine Docker
+        stage('Build and Push Docker Image') {
             steps {
                 script {
-                    // Costruisce l'immagine Docker.
-                    // Il Dockerfile si trova nella sottodirectory 'app'.
-                    // Il tag dell'immagine sarà 'niccoloalfredo/flask-app-example:BUILD_NUMBER'
-                    // L'opzione --target builder assicura che venga costruita solo la stage di produzione del Dockerfile.
-                    sh "docker build -t ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} --target builder ./app"
-                    // Aggiunge un tag 'latest' all'immagine per facilità d'uso
-                    sh "docker tag ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} ${DOCKER_IMAGE_NAME}:latest"
-                }
-            }
-        }
+                    // Preleva le informazioni necessarie dal contesto di Jenkins
+                    // env.GIT_TAG_NAME è popolato solo se la build è da un tag Git
+                    def gitTagName = env.GIT_TAG_NAME
+                    // env.BRANCH_NAME contiene il nome del branch (es. 'main', 'develop', 'feature/xyz')
+                    def branchName = env.BRANCH_NAME
+                    // env.GIT_COMMIT contiene l'SHA completo del commit Git
+                    def gitCommitShortSha = env.GIT_COMMIT ? env.GIT_COMMIT.substring(0, 7) : 'unknown' // Aggiunta gestione per GIT_COMMIT nullo
 
-        // Fase di Push dell'immagine Docker su Docker Hub
-        stage('Push Docker Image') {
-            steps {
-                // Utilizza 'withDockerRegistry' per gestire il login/logout in modo sicuro.
-                // Non è più necessario usare 'withCredentials' e 'docker login/logout' espliciti.
-                withDockerRegistry(credentialsId: DOCKER_HUB_CREDENTIALS_ID, url: 'https://index.docker.io/v1/') {
-                    script {
-                        // Effettua il push dell'immagine con il tag specifico (BUILD_NUMBER)
-                        sh "docker push ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}"
-                        // Effettua il push dell'immagine con il tag 'latest'
-                        sh "docker push ${DOCKER_IMAGE_NAME}:latest"
-                    }
+                    // Chiama la funzione helper per eseguire la logica di build e push
+                    buildAndPushMyDockerImage(
+                        imageName: DOCKER_IMAGE_NAME,
+                        dockerHubCredsId: DOCKER_HUB_CREDENTIALS_ID,
+                        gitTagName: gitTagName,
+                        branchName: branchName,
+                        gitCommitShortSha: gitCommitShortSha
+                    )
                 }
             }
         }
@@ -80,13 +133,11 @@ pipeline {
 
     // Post-azioni (eseguite dopo che tutte le fasi sono completate)
     post {
-        // Le azioni di login/logout sono gestite automaticamente da withDockerRegistry,
-        // quindi non è necessario un 'always { docker logout }' esplicito qui.
         failure {
-            echo "Pipeline fallita. Controlla i log per i dettagli."
+            echo "Pipeline failed. Check logs for details."
         }
         success {
-            echo "Pipeline completata con successo! Immagine Docker ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} pushata su Docker Hub."
+            echo "Pipeline completed successfully! Docker images pushed to Docker Hub."
         }
     }
 }
