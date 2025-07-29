@@ -50,7 +50,7 @@ def buildAndPushMyDockerImage(config) {
 
     // Interazione con Docker Hub in modo sicuro usando le credenziali Jenkins
     // Questo blocco gestisce l'autenticazione Docker Hub in modo sicuro.
-    // NON ci dovrebbero essere chiamate esplicite a docker login qui.
+    // NON ci dovrebbero essere chiamate esplicite a `docker login` qui.
     docker.withRegistry('https://index.docker.io/v1/', config.dockerHubCredsId) {
         // Costruisci l'immagine Docker
         // Usiamo il 'buildTag' determinato dalla logica
@@ -118,28 +118,34 @@ pipeline {
         stage('Build and Push Docker Image') {
             steps {
                 script {
+                    // --- INIZIO BLOCCO DI DEBUG ---
+                    echo "--- DEBUG VARIABILI AMBIENTE GIT ---"
+                    echo "env.GIT_TAG_NAME: ${env.GIT_TAG_NAME}"
+                    echo "env.BRANCH_NAME: ${env.BRANCH_NAME}"
+                    echo "env.GIT_BRANCH: ${env.GIT_BRANCH}"
+                    echo "env.GIT_COMMIT: ${env.GIT_COMMIT}"
+                    echo "-----------------------------------"
+                    // --- FINE BLOCCO DI DEBUG ---
+
                     // Preleva le informazioni necessarie dal contesto di Jenkins
-                    // env.GIT_TAG_NAME è popolato solo se la build è da un tag Git
                     def gitTagName = env.GIT_TAG_NAME
 
-                    // --- MODIFICA CHIAVE QUI ---
                     // Utilizza env.GIT_BRANCH come prima scelta per il nome del branch,
                     // poi fallback a env.BRANCH_NAME.
-                    // Questo è spesso più affidabile per i job Pipeline.
-                    def branchName = env.GIT_BRANCH ?: env.BRANCH_NAME
-                    // --- FINE MODIFICA CHIAVE ---
+                    def rawBranchName = env.GIT_BRANCH ?: env.BRANCH_NAME
+                    // Rimuovi il prefisso 'origin/' se presente per ottenere il nome del branch pulito
+                    def branchName = rawBranchName ? rawBranchName.replaceFirst('^origin/', '') : null
 
                     // env.GIT_COMMIT contiene l'SHA completo del commit Git
                     def gitCommitShortSha = env.GIT_COMMIT ? env.GIT_COMMIT.substring(0, 7) : 'unknown'
 
-                    // Chiama la funzione helper per eseguire la logica di build e push
-                    buildAndPushMyDockerImage(
-                        imageName: DOCKER_IMAGE_NAME,
-                        dockerHubCredsId: DOCKER_HUB_CREDENTIALS_ID,
-                        gitTagName: gitTagName,
-                        branchName: branchName, // Ora dovrebbe essere più affidabile
-                        gitCommitShortSha: gitCommitShortSha
-                    )
+                    // --- INIZIO BLOCCO DI DEBUG ---
+                    echo "--- DEBUG VARIABILI PASSATE ALLA FUNZIONE ---"
+                    echo "gitTagName (passato): ${gitTagName}"
+                    echo "branchName (passato, pulito): ${branchName}"
+                    echo "gitCommitShortSha (passato): ${gitCommitShortSha}"
+                    echo "--------------------------------------------"
+                    // --- FINE BLOCCO DI DEBUG ---
                 }
             }
         }
