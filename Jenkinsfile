@@ -25,29 +25,26 @@ def buildAndPushMyDockerImage(config) {
         // Caso 1: Build da un tag Git
         buildTag = config.gitTagName
         echo "Building from Git tag: '${buildTag}'"
-    } else if (config.branchName != null) { // <-- IMPORTANTE: Controlla che branchName non sia nullo
-        if (config.branchName == 'main' || config.branchName == 'master') { // Aggiunto 'master' per compatibilità
-            // Caso 2: Build dal branch 'main' (o 'master')
-            buildTag = 'latest' // Il tag principale per la main è 'latest'
-            shouldPushLatest = true // In questo caso, pushiamo anche il tag 'latest'
-            echo "Building from '${config.branchName}' branch. Image tag will be: '${buildTag}'"
-        } else if (config.branchName == 'develop') {
-            // Caso 3: Build dal branch 'develop'
-            buildTag = "develop-${config.gitCommitShortSha}"
-            echo "Building from 'develop' branch. Image tag will be: '${buildTag}'"
-        } else {
-            // Caso 4: Build da altri branch (es. feature branches)
-            // Sostituisce i '/' con '-' per avere un tag Docker valido
-            def sanitizedBranchName = config.branchName.replaceAll('/', '-')
-            buildTag = "${sanitizedBranchName}-${config.gitCommitShortSha}"
-            echo "Building from branch '${config.branchName}'. Image tag will be: '${buildTag}'"
-        }
+    } else if (config.branchName == 'main' || config.branchName == 'master') {
+        // Caso 2: Build dal branch 'main' (o 'master')
+        buildTag = 'latest' // Il tag principale per la main è 'latest'
+        shouldPushLatest = true // In questo caso, pushiamo anche il tag 'latest'
+        echo "Building from '${config.branchName}' branch. Image tag will be: '${buildTag}'"
+    } else if (config.branchName == 'develop') {
+        // Caso 3: Build dal branch 'develop'
+        buildTag = "develop-${config.gitCommitShortSha}"
+        echo "Building from 'develop' branch. Image tag will be: '${buildTag}'"
+    } else if (config.branchName != null) { // Questo gestisce altri branch come 'feature/xyz'
+        // Caso 4: Build da altri branch (es. feature branches)
+        // Sostituisce i '/' con '-' per avere un tag Docker valido
+        def sanitizedBranchName = config.branchName.replaceAll('/', '-')
+        buildTag = "${sanitizedBranchName}-${config.gitCommitShortSha}"
+        echo "Building from branch '${config.branchName}'. Image tag will be: '${buildTag}'"
     } else {
-        // Caso di fallback: branchName è nullo e non è un tag Git esplicito.
-        // Questo può succedere in alcuni scenari di Jenkins o se il refspec non è chiaro.
-        // Utilizziamo un tag basato sull'SHA del commit.
-        buildTag = "unknown-branch-${config.gitCommitShortSha}"
-        echo "Warning: Branch name is null. Building with tag: '${buildTag}'"
+        // Caso di fallback: branchName è nullo (es. build triggerata da un SHA specifico, non un branch o tag)
+        // Utilizziamo un tag basato sull'SHA del commit per chiarezza.
+        buildTag = "commit-${config.gitCommitShortSha}"
+        echo "Warning: Branch name is null and not a tag build. Building with tag: '${buildTag}'"
     }
 
     // Interazione con Docker Hub in modo sicuro usando le credenziali Jenkins
@@ -109,7 +106,7 @@ pipeline {
             steps {
                 // Clona il repository Git specificato.
                 // Usiamo 'checkout scm' per sfruttare la configurazione SCM del job Jenkins,
-                // che ora dovrebbe essere impostata per monitorare tutti i branch e tag ('**').
+                // che ora dovrebbe essere impostata per monitorare tutti i branch e tag.
                 checkout scm
             }
         }
@@ -122,16 +119,17 @@ pipeline {
                     // env.GIT_TAG_NAME è popolato solo se la build è da un tag Git
                     def gitTagName = env.GIT_TAG_NAME
                     // env.BRANCH_NAME contiene il nome del branch (es. 'main', 'develop', 'feature/xyz')
+                    // Questo è il modo più affidabile per ottenere il nome del branch per le build da branch.
                     def branchName = env.BRANCH_NAME
                     // env.GIT_COMMIT contiene l'SHA completo del commit Git
-                    def gitCommitShortSha = env.GIT_COMMIT ? env.GIT_COMMIT.substring(0, 7) : 'unknown' // Aggiunta gestione per GIT_COMMIT nullo
+                    def gitCommitShortSha = env.GIT_COMMIT ? env.GIT_COMMIT.substring(0, 7) : 'unknown'
 
                     // Chiama la funzione helper per eseguire la logica di build e push
                     buildAndPushMyDockerImage(
                         imageName: DOCKER_IMAGE_NAME,
                         dockerHubCredsId: DOCKER_HUB_CREDENTIALS_ID,
                         gitTagName: gitTagName,
-                        branchName: branchName,
+                        branchName: branchName, // Ora dovrebbe essere corretto
                         gitCommitShortSha: gitCommitShortSha
                     )
                 }
