@@ -125,27 +125,29 @@ pipeline {
                     echo "env.GIT_BRANCH: ${env.GIT_BRANCH}"
                     echo "env.GIT_COMMIT: ${env.GIT_COMMIT}"
                     echo "-----------------------------------"
-                    // --- FINE BLOCCO DI DEBUG ---
 
-                    // Preleva le informazioni necessarie dal contesto di Jenkins
                     def gitTagName = env.GIT_TAG_NAME
-
-                    // Utilizza env.GIT_BRANCH come prima scelta per il nome del branch,
-                    // poi fallback a env.BRANCH_NAME.
                     def rawBranchName = env.GIT_BRANCH ?: env.BRANCH_NAME
-                    // Rimuovi il prefisso 'origin/' se presente per ottenere il nome del branch pulito
                     def branchName = rawBranchName ? rawBranchName.replaceFirst('^origin/', '') : null
-
-                    // env.GIT_COMMIT contiene l'SHA completo del commit Git
                     def gitCommitShortSha = env.GIT_COMMIT ? env.GIT_COMMIT.substring(0, 7) : 'unknown'
 
-                    // --- INIZIO BLOCCO DI DEBUG ---
+                    // --- DEBUG VARIABILI PASSATE ---
                     echo "--- DEBUG VARIABILI PASSATE ALLA FUNZIONE ---"
                     echo "gitTagName (passato): ${gitTagName}"
                     echo "branchName (passato, pulito): ${branchName}"
                     echo "gitCommitShortSha (passato): ${gitCommitShortSha}"
                     echo "--------------------------------------------"
-                    // --- FINE BLOCCO DI DEBUG ---
+
+                    // --- CHIAMATA ALLA FUNZIONE DI BUILD & PUSH ---
+                    buildAndPushMyDockerImage([
+                        imageName: env.DOCKER_IMAGE_NAME,
+                        dockerHubCredsId: env.DOCKER_HUB_CREDENTIALS_ID,
+                        dockerfileDir: './app',
+                        dockerfileName: 'Dockerfile',
+                        gitTagName: gitTagName,
+                        branchName: branchName,
+                        gitCommitShortSha: gitCommitShortSha
+                    ])
                 }
             }
         }
