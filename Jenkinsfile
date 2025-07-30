@@ -1,4 +1,4 @@
-// Jenkinsfile
+// Jenkinsfile (check)
 // Pipeline Jenkins dichiarativa per la build e il push di un'immagine Docker
 
 // Definizione della funzione helper per la build e il push dell'immagine Docker
