@@ -1,4 +1,4 @@
-// Jenkinsfile(check)
+// Jenkinsfile(check1)
 
 // Definizione della funzione helper per la build e il push dell'immagine Docker
 // Questa funzione incapsula la logica di tagging e interazione con Docker Hub.
