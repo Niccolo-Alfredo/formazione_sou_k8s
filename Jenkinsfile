@@ -1,4 +1,5 @@
-// Jenkinsfile(check1)
+// Jenkinsfile
+// Pipeline Jenkins dichiarativa per la build e il push di un'immagine Docker
 
 // Definizione della funzione helper per la build e il push dell'immagine Docker
 // Questa funzione incapsula la logica di tagging e interazione con Docker Hub.
@@ -81,78 +82,76 @@ def buildAndPushMyDockerImage(config) {
 
 
 pipeline {
+    // Agente che esegue la pipeline. 'agent-1' è il nome che abbiamo dato al tuo agente.
     agent {
         node {
             label 'agent-1'
         }
     }
 
+    // Configurazione degli strumenti globali di Jenkins
     tools {
-        git 'Default'
+        git 'Default' // Nome dello strumento Git configurato globalmente in Jenkins
     }
 
+    // Variabili di ambiente globali per la pipeline
     environment {
+        // Il nome base dell'immagine Docker. Sostituisci 'niccoloalfredo' con il tuo username Docker Hub.
         DOCKER_IMAGE_NAME = 'niccoloalfredo/flask-app-example'
+        // L'ID delle credenziali Docker Hub configurate in Jenkins
         DOCKER_HUB_CREDENTIALS_ID = 'docker-hub-credentials'
     }
 
+    // Definizione delle fasi della pipeline
     stages {
+        // Fase di Checkout del codice dal repository Git
         stage('Checkout SCM') {
             steps {
-                script {
-                    checkout([
-                        $class: 'GitSCM',
-                        branches: scm.branches,
-                        userRemoteConfigs: scm.userRemoteConfigs,
-                        extensions: scm.extensions + [
-                            [$class: 'CloneOption',
-                             noTags: false,
-                             shallow: false,
-                             depth: 0,
-                             timeout: 10]
-                        ],
-                        doGenerateSubmoduleConfigurations: false,
-                        submoduleCfg: [],
-                        refspec: '+refs/heads/*:refs/remotes/origin/* +refs/tags/*:refs/tags/*'
-                    ])
-
-                    // Imposta GIT_TAG_NAME se è un build da tag
-                    def tagOutput = sh(script: "git describe --tags --exact-match || true", returnStdout: true).trim()
-                    if (tagOutput) {
-                        env.GIT_TAG_NAME = tagOutput
-                        echo "Detected Git tag: ${env.GIT_TAG_NAME}"
-                    } else {
-                        echo "No Git tag detected for this build."
-                    }
-                }
+                // Clona il repository Git specificato.
+                // Usiamo 'checkout scm' per sfruttare la configurazione SCM del job Jenkins,
+                // che ora dovrebbe essere impostata per monitorare tutti i branch e tag.
+                checkout scm
             }
         }
 
+        // Fase che combina la determinazione del tag, la build e il push dell'immagine Docker
         stage('Build and Push Docker Image') {
             steps {
                 script {
+                    // --- INIZIO BLOCCO DI DEBUG ---
                     echo "--- DEBUG VARIABILI AMBIENTE GIT ---"
                     echo "env.GIT_TAG_NAME: ${env.GIT_TAG_NAME}"
                     echo "env.BRANCH_NAME: ${env.BRANCH_NAME}"
                     echo "env.GIT_BRANCH: ${env.GIT_BRANCH}"
                     echo "env.GIT_COMMIT: ${env.GIT_COMMIT}"
+                    echo "-----------------------------------"
+                    // --- FINE BLOCCO DI DEBUG ---
 
+                    // Preleva le informazioni necessarie dal contesto di Jenkins
                     def gitTagName = env.GIT_TAG_NAME
+
+                    // Utilizza env.GIT_BRANCH come prima scelta per il nome del branch,
+                    // poi fallback a env.BRANCH_NAME.
                     def rawBranchName = env.GIT_BRANCH ?: env.BRANCH_NAME
+                    // Rimuovi il prefisso 'origin/' se presente per ottenere il nome del branch pulito
                     def branchName = rawBranchName ? rawBranchName.replaceFirst('^origin/', '') : null
+
+                    // env.GIT_COMMIT contiene l'SHA completo del commit Git
                     def gitCommitShortSha = env.GIT_COMMIT ? env.GIT_COMMIT.substring(0, 7) : 'unknown'
 
+                    // --- INIZIO BLOCCO DI DEBUG ---
                     echo "--- DEBUG VARIABILI PASSATE ALLA FUNZIONE ---"
                     echo "gitTagName (passato): ${gitTagName}"
                     echo "branchName (passato, pulito): ${branchName}"
                     echo "gitCommitShortSha (passato): ${gitCommitShortSha}"
-
-                    // buildAndPushMyDockerImage(...) è momentaneamente disattivata per il debug
+                    echo "--------------------------------------------"
+                    // --- FINE BLOCCO DI DEBUG ---
                 }
             }
         }
     }
 
+    // Post-azioni (eseguite dopo che tutte le fasi sono completate)
     post {
         failure {
             echo "Pipeline failed. Check logs for details."
