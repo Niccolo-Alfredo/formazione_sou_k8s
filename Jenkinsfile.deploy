@@ -10,30 +10,6 @@ pipeline {
 
     stages {
 
-        stage('Install Helm') {
-            steps {
-                script {
-                    // Controlla se Helm è già installato
-                    def helmFound = sh(script: 'command -v helm', returnStatus: true, quiet: true) == 0
-
-                    if (!helmFound) {
-                        echo 'Helm not found. Installing...'
-                        sh """
-                            # Scarica l'archivio di Helm
-                            curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
-                            chmod 700 get_helm.sh
-                            
-                            # Installa Helm nella cartella home di Jenkins senza sudo
-                            ./get_helm.sh --no-sudo
-                        """
-                        echo 'Helm installed successfully.'
-                    } else {
-                        echo 'Helm is already installed.'
-                    }
-                }
-            }
-        }
-
         stage('Check and Create Namespace') {
             steps {
                 script {
