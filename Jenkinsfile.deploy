@@ -1,0 +1,49 @@
+pipeline {
+    agent any
+
+    environment {
+        // Definiamo le variabili per rendere il codice più leggibile
+        HELM_CHART_PATH = 'charts/flask-app-chart'
+        K8S_NAMESPACE = 'formazione-sou'
+        RELEASE_NAME = 'flask-app-example'
+    }
+
+    stages {
+        stage('Check and Create Namespace') {
+            steps {
+                script {
+                    // Controlla se il namespace esiste e lo crea se non esiste
+                    withCredentials([file(credentialsId: 'kubeconfig-formazione-sou', variable: 'KUBECONFIG_FILE')]) {
+                        def namespaceExists = sh(script: "kubectl get namespace ${K8S_NAMESPACE} --ignore-not-found --kubeconfig ${KUBECONFIG_FILE}", returnStatus: true)
+                        if (namespaceExists != 0) {
+                            echo "Namespace '${K8S_NAMESPACE}' does not exist. Creating it now."
+                            sh "kubectl create namespace ${K8S_NAMESPACE} --kubeconfig ${KUBECONFIG_FILE}"
+                        } else {
+                            echo "Namespace '${K8S_NAMESPACE}' already exists. Skipping creation."
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Checkout Code') {
+            steps {
+                // Clona la repository che contiene il tuo Helm Chart
+                git url: 'https://github.com/Niccolo-Alfredo/formazione_sou_k8s.git', branch: 'main'
+            }
+        }
+
+        stage('Install Helm Chart') {
+            steps {
+                script {
+                    // Utilizza il chart per installare/aggiornare l'applicazione
+                    // Usiamo la stessa credenziale per Helm
+                    withCredentials([file(credentialsId: 'kubeconfig-formazione-sou', variable: 'KUBECONFIG_FILE')]) {
+                        // Il comando --set image.tag=latest specifica l'ultimo tag
+                        sh "helm upgrade --install ${RELEASE_NAME} ${HELM_CHART_PATH} --namespace ${K8S_NAMESPACE} --kubeconfig ${KUBECONFIG_FILE} --set image.tag=latest"
+                    }
+                }
+            }
+        }
+    }
+}
