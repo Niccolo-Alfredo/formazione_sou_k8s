@@ -53,13 +53,14 @@ pipeline {
             agent {
                 kubernetes {
                     label 'best-practices-checker-pod'
-                    // Specifichiamo il nostro Service Account con permessi limitati
                     namespace 'formazione-sou'
-                    serviceAccount 'deployment-checker-sa' 
+                    serviceAccount 'deployment-checker-sa'
                     containerTemplate {
                         name 'kubectl'
                         image 'bitnami/kubectl:latest'
-                        command 'cat'
+                        // Comando che mantiene il container in esecuzione
+                        command 'sleep'
+                        args 'infinity'
                         tty true
                     }
                 }
@@ -67,7 +68,6 @@ pipeline {
             steps {
                 container('kubectl') {
                     echo "Running best practices check script inside the Pod..."
-                    // Lo script Bash usa i permessi del Service Account del Pod
                     sh 'chmod +x ./check_deployment.sh'
                     sh './check_deployment.sh'
                 }
