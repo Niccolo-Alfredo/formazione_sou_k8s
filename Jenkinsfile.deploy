@@ -54,8 +54,8 @@ pipeline {
                 script {
                     echo "Running best practices check script..."
                     withCredentials([file(credentialsId: 'kubeconfig-formazione-sou', variable: 'KUBECONFIG_FILE')]) {
-                        // Passa la variabile direttamente come un'associazione chiave-valore
-                        withEnv([KUBECONFIG: KUBECONFIG_FILE]) {
+                        // Passa la variabile come una stringa all'interno di una lista
+                        withEnv(['KUBECONFIG=' + KUBECONFIG_FILE]) {
                             sh 'chmod +x ./check_deployment.sh'
                             sh './check_deployment.sh'
                         }
