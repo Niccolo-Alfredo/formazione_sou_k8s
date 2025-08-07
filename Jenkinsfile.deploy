@@ -50,25 +50,28 @@ pipeline {
         }
 
         stage('Check Deployment Best Practices In-Cluster') {
-            steps {
-                script {
-                    // Questa parte del pipeline si assicura che il pod temporaneo venga creato
-                    // con il nostro ServiceAccount.
-                    withPodTemplate(label: 'best-practices-checker-pod', containers: [
-                        containerTemplate(name: 'kubectl', image: 'bitnami/kubectl', tty: true, command: 'cat')
-                    ], serviceAccount: 'deployment-checker-sa') {
-
-                        node('best-practices-checker-pod') {
-                            container('kubectl') {
-                                // I file del tuo repository (inclusi gli script) vengono montati in questo pod.
-                                echo "Running best practices check script inside the Pod..."
-                                // Rendi lo script eseguibile
-                                sh 'chmod +x ./check_deployment.sh'
-                                // Esegui lo script che ora sfrutterà il ServiceAccount del Pod
-                                sh './check_deployment.sh'
-                            }
-                        }
+            agent {
+                kubernetes {
+                    label 'best-practices-checker-pod'
+                    containerTemplate {
+                        name 'kubectl'
+                        image 'bitnami/kubectl'
+                        command 'cat'
+                        tty true
                     }
+                    yaml '''
+apiVersion: v1
+kind: Pod
+spec:
+  serviceAccountName: deployment-checker-sa
+'''
+                }
+            }
+            steps {
+                container('kubectl') {
+                    echo "Running best practices check script inside the Pod..."
+                    sh 'chmod +x ./check_deployment.sh'
+                    sh './check_deployment.sh'
                 }
             }
         }
