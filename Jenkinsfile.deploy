@@ -54,6 +54,7 @@ pipeline {
                 kubernetes {
                     label 'best-practices-checker-pod'
                     // Specifichiamo il nostro Service Account con permessi limitati
+                    namespace 'formazione-sou'
                     serviceAccount 'deployment-checker-sa' 
                     containerTemplate {
                         name 'kubectl'
