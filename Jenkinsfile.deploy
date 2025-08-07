@@ -49,17 +49,26 @@ pipeline {
             }
         }
 
-        stage('Check Deployment Best Practices') {
-            steps {
-                script {
-                    echo "Running best practices check script..."
-                    withCredentials([file(credentialsId: 'kubeconfig-formazione-sou', variable: 'KUBECONFIG_FILE')]) {
-                        // Passa la variabile come una stringa all'interno di una lista
-                        withEnv(['KUBECONFIG=' + KUBECONFIG_FILE]) {
-                            sh 'chmod +x ./check_deployment.sh'
-                            sh './check_deployment.sh'
-                        }
+        stage('Check Deployment Best Practices In-Cluster') {
+            agent {
+                kubernetes {
+                    label 'best-practices-checker-pod'
+                    // Specifichiamo il nostro Service Account con permessi limitati
+                    serviceAccount 'deployment-checker-sa' 
+                    containerTemplate {
+                        name 'kubectl'
+                        image 'bitnami/kubectl:latest'
+                        command 'cat'
+                        tty true
                     }
+                }
+            }
+            steps {
+                container('kubectl') {
+                    echo "Running best practices check script inside the Pod..."
+                    // Lo script Bash usa i permessi del Service Account del Pod
+                    sh 'chmod +x ./check_deployment.sh'
+                    sh './check_deployment.sh'
                 }
             }
         }
