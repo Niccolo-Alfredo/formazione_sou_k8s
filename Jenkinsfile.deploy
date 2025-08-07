@@ -43,7 +43,7 @@ pipeline {
                     // Usiamo la stessa credenziale per Helm
                     withCredentials([file(credentialsId: 'kubeconfig-formazione-sou', variable: 'KUBECONFIG_FILE')]) {
                         // Il comando --set image.tag=latest specifica l'ultimo tag
-                        sh "helm upgrade --install " + RELEASE_NAME + " " + HELM_CHART_PATH} + " --namespace " + K8S_NAMESPACE " --kubeconfig " + KUBECONFIG_FILE + " --set image.tag=latest"
+                        sh "helm upgrade --install " + RELEASE_NAME + " " + HELM_CHART_PATH + " --namespace " + K8S_NAMESPACE + " --kubeconfig " + KUBECONFIG_FILE + " --set image.tag=latest"
                     }
                 }
             }
