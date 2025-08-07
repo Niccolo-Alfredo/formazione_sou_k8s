@@ -53,9 +53,11 @@ pipeline {
             steps {
                 script {
                     echo "Running best practices check script..."
-                    // Esegue lo script che abbiamo creato
-                    // Se lo script fallisce (esce con un codice diverso da 0), questo stage fallirà
-                    sh './check_deployment.sh'
+                    withCredentials([file(credentialsId: 'kubeconfig-formazione-sou', variable: 'KUBECONFIG_FILE')]) {
+                        // Esegue lo script che abbiamo creato
+                        // Se lo script fallisce (esce con un codice diverso da 0), questo stage fallirà
+                        sh './check_deployment.sh'
+                    }
                 }
             }
         }
