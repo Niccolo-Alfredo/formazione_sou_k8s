@@ -26,30 +26,5 @@ pipeline {
                 }
             }
         }
-
-'''
-
-        stage('Checkout Code') {
-            steps {
-                // Clona la repository che contiene il tuo Helm Chart
-                git url: 'https://github.com/Niccolo-Alfredo/formazione_sou_k8s.git', branch: 'main'
-            }
-        }
-
-        stage('Install Helm Chart') {
-            steps {
-                script {
-                    // Utilizza il chart per installare/aggiornare l'applicazione
-                    // Usiamo la stessa credenziale per Helm
-                    withCredentials([file(credentialsId: 'kubeconfig-formazione-sou', variable: 'KUBECONFIG_FILE')]) {
-                        // Il comando --set image.tag=latest specifica l'ultimo tag
-                        sh "helm upgrade --install ${RELEASE_NAME} ${HELM_CHART_PATH} --namespace ${K8S_NAMESPACE} --kubeconfig ${KUBECONFIG_FILE} --set image.tag=latest"
-                    }
-                }
-            }
-        }
-
-'''
-
     }
 }
