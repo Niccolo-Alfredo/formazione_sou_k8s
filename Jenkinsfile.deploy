@@ -9,16 +9,17 @@ pipeline {
     }
 
     stages {
-
         stage('Check and Create Namespace') {
             steps {
                 script {
-                    // Controlla se il namespace esiste e lo crea se non esiste
                     withCredentials([file(credentialsId: 'kubeconfig-formazione-sou', variable: 'KUBECONFIG_FILE')]) {
-                        def namespaceExists = sh(script: "kubectl get namespace ${K8S_NAMESPACE} --ignore-not-found --kubeconfig ${KUBECONFIG_FILE}", returnStatus: true)
+                        def namespaceExists = sh(
+                            script: 'kubectl get namespace ' + K8S_NAMESPACE + ' --ignore-not-found --kubeconfig ' + KUBECONFIG_FILE,
+                            returnStatus: true
+                        )
                         if (namespaceExists != 0) {
                             echo "Namespace '${K8S_NAMESPACE}' does not exist. Creating it now."
-                            sh "kubectl create namespace ${K8S_NAMESPACE} --kubeconfig ${KUBECONFIG_FILE}"
+                            sh 'kubectl create namespace ' + K8S_NAMESPACE + ' --kubeconfig ' + KUBECONFIG_FILE
                         } else {
                             echo "Namespace '${K8S_NAMESPACE}' already exists. Skipping creation."
                         }
