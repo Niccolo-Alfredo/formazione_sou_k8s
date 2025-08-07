@@ -54,10 +54,11 @@ pipeline {
                 script {
                     echo "Running best practices check script..."
                     withCredentials([file(credentialsId: 'kubeconfig-formazione-sou', variable: 'KUBECONFIG_FILE')]) {
-                        // Esegue lo script che abbiamo creato
-                        // Se lo script fallisce (esce con un codice diverso da 0), questo stage fallirà
-                        sh 'chmod +x ./check_deployment.sh'
-                        sh './check_deployment.sh'
+                        // Expose the temporary file path to the KUBECONFIG environment variable for this block
+                        withEnv(["KUBECONFIG=${KUBECONFIG_FILE}"]) {
+                            sh 'chmod +x ./check_deployment.sh'
+                            sh './check_deployment.sh'
+                        }
                     }
                 }
             }
