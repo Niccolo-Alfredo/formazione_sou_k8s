@@ -53,16 +53,21 @@ pipeline {
             agent {
                 kubernetes {
                     label 'best-practices-checker-pod'
-                    namespace 'formazione-sou'
-                    serviceAccount 'deployment-checker-sa'
-                    containerTemplate {
-                        name 'kubectl'
-                        image 'bitnami/kubectl:latest'
-                        // Comando che mantiene il container in esecuzione
-                        command 'sleep'
-                        args 'infinity'
-                        tty true
-                    }
+                    yaml '''
+apiVersion: v1
+kind: Pod
+metadata:
+  namespace: formazione-sou
+  labels:
+    jenkins: best-practices-checker-pod
+spec:
+  serviceAccountName: deployment-checker-sa
+  containers:
+  - name: kubectl
+    image: bitnami/kubectl:latest
+    command: ["sleep"]
+    args: ["infinity"]
+'''
                 }
             }
             steps {
