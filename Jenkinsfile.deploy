@@ -51,18 +51,14 @@ pipeline {
 
         stage('Test K8s Connection') {
             steps {
-                withCredentials([file(credentialsId: 'sa-deployment-checker', variable: 'KUBECONFIG_FILE')]) {
+                withCredentials([file(credentialsId: 'KUBECONFIG_DEPLOYMENT_CHECKER', variable: 'KUBECONFIG_FILE')]) {
                 sh '''
-                    echo "Usando kubeconfig del SA deployment-checker-sa..."
                     export KUBECONFIG=$KUBECONFIG_FILE
 
-                    # Controllo dei namespace
-                    kubectl get namespaces
-
-                    # Controllo dei pod nel namespace formazione-sou
+                    echo "Pods nel namespace formazione-sou:"
                     kubectl get pods -n formazione-sou
 
-                    # Controllo dei deployment nel namespace formazione-sou
+                    echo "Deployments nel namespace formazione-sou:"
                     kubectl get deployments -n formazione-sou
                 '''
                 }
