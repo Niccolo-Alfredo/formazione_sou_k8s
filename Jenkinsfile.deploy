@@ -54,7 +54,7 @@ pipeline {
                 withCredentials([file(credentialsId: 'sa-deployment-checker', variable: 'KUBECONFIG_FILE')]) {
                     sh '''
                         echo "Usando kubeconfig del SA deployment-checker-sa..."
-                        chmod +x scripts/check_deployment.sh
+                        chmod +x ./check_deployment.sh
                         ./check_deployment.sh formazione-sou flask-app-example-flask-app-chart $KUBECONFIG_FILE
                     '''
                 }
