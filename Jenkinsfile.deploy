@@ -51,7 +51,7 @@ pipeline {
 
         stage('Test K8s Connection') {
             steps {
-                withCredentials([file(credentialsId: 'KUBECONFIG_DEPLOYMENT_CHECKER', variable: 'KUBECONFIG_FILE')]) {
+                withCredentials([file(credentialsId: 'sa-deployment-checker', variable: 'KUBECONFIG_FILE')]) {
                 sh '''
                     export KUBECONFIG=$KUBECONFIG_FILE
 
