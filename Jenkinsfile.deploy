@@ -49,31 +49,22 @@ pipeline {
             }
         }
 
-        stage('Check Deployment Best Practices In-Cluster') {
-            agent {
-                kubernetes {
-                    yaml '''
-apiVersion: v1
-kind: Pod
-metadata:
-  namespace: formazione-sou
-  labels:
-    jenkins: best-practices-checker-pod
-spec:
-  serviceAccountName: deployment-checker-sa
-  containers:
-  - name: kubectl
-    image: bitnami/kubectl:latest
-    command: ["sleep"]
-    args: ["infinity"]
-'''
-                }
-            }
+        stage('Test K8s Connection') {
             steps {
-                container('kubectl') {
-                    echo "Running best practices check script inside the Pod..."
-                    sh 'chmod +x ./check_deployment.sh'
-                    sh './check_deployment.sh'
+                withCredentials([file(credentialsId: 'sa-deployment-checker', variable: 'KUBECONFIG_FILE')]) {
+                sh '''
+                    echo "Usando kubeconfig del SA deployment-checker-sa..."
+                    export KUBECONFIG=$KUBECONFIG_FILE
+
+                    # Controllo dei namespace
+                    kubectl get namespaces
+
+                    # Controllo dei pod nel namespace formazione-sou
+                    kubectl get pods -n formazione-sou
+
+                    # Controllo dei deployment nel namespace formazione-sou
+                    kubectl get deployments -n formazione-sou
+                '''
                 }
             }
         }
