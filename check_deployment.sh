@@ -19,6 +19,7 @@ if [[ -z "$DEPLOYMENT_JSON" ]]; then
     echo "ERRORE: Deployment '$DEPLOYMENT_NAME' non trovato nel namespace '$NAMESPACE'."
     exit 1
 fi
+echo $DEPLOYMENT_JSON
 echo "Deployment trovato."
 
 # ==================================
