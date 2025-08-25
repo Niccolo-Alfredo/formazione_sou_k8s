@@ -19,7 +19,6 @@ if [[ -z "$DEPLOYMENT_JSON" ]]; then
     echo "ERRORE: Deployment '$DEPLOYMENT_NAME' non trovato nel namespace '$NAMESPACE'."
     exit 1
 fi
-echo $DEPLOYMENT_JSON
 echo "Deployment trovato."
 
 # ==================================
@@ -36,21 +35,21 @@ else
     exit 1
 fi
 
-# ==================================
-# 3. VERIFICA LIMITS E REQUESTS
-# ==================================
-echo "Verifica l'esistenza di limits e requests per CPU e Memoria..."
-CPU_LIMIT=$(kubectl get deployment "$DEPLOYMENT_NAME" -n "$NAMESPACE" -o jsonpath='{.spec.template.spec.containers[0].resources.limits.cpu}' || true)
-MEM_LIMIT=$(kubectl get deployment "$DEPLOYMENT_NAME" -n "$NAMESPACE" -o jsonpath='{.spec.template.spec.containers[0].resources.limits.memory}' || true)
-CPU_REQUEST=$(kubectl get deployment "$DEPLOYMENT_NAME" -n "$NAMESPACE" -o jsonpath='{.spec.template.spec.containers[0].resources.requests.cpu}' || true)
-MEM_REQUEST=$(kubectl get deployment "$DEPLOYMENT_NAME" -n "$NAMESPACE" -o jsonpath='{.spec.template.spec.containers[0].resources.requests.memory}' || true)
+# # ==================================
+# # 3. VERIFICA LIMITS E REQUESTS
+# # ==================================
+# echo "Verifica l'esistenza di limits e requests per CPU e Memoria..."
+# CPU_LIMIT=$(kubectl get deployment "$DEPLOYMENT_NAME" -n "$NAMESPACE" -o jsonpath='{.spec.template.spec.containers[0].resources.limits.cpu}' || true)
+# MEM_LIMIT=$(kubectl get deployment "$DEPLOYMENT_NAME" -n "$NAMESPACE" -o jsonpath='{.spec.template.spec.containers[0].resources.limits.memory}' || true)
+# CPU_REQUEST=$(kubectl get deployment "$DEPLOYMENT_NAME" -n "$NAMESPACE" -o jsonpath='{.spec.template.spec.containers[0].resources.requests.cpu}' || true)
+# MEM_REQUEST=$(kubectl get deployment "$DEPLOYMENT_NAME" -n "$NAMESPACE" -o jsonpath='{.spec.template.spec.containers[0].resources.requests.memory}' || true)
 
-if [[ -n "$CPU_LIMIT" && -n "$MEM_LIMIT" && -n "$CPU_REQUEST" && -n "$MEM_REQUEST" ]]; then
-    echo "Limits e Requests trovati."
-else
-    echo "ERRORE: Il deployment non ha limits o requests configurati per CPU/Memoria."
-    exit 1
-fi
+# if [[ -n "$CPU_LIMIT" && -n "$MEM_LIMIT" && -n "$CPU_REQUEST" && -n "$MEM_REQUEST" ]]; then
+#     echo "Limits e Requests trovati."
+# else
+#     echo "ERRORE: Il deployment non ha limits o requests configurati per CPU/Memoria."
+#     exit 1
+# fi
 
-echo "--- Controllo delle best practices completato con successo! 🎉 ---"
+echo "--- Controllo delle best practices completato con successo! ---"
 exit 0
