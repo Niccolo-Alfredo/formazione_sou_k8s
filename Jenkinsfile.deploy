@@ -51,11 +51,19 @@ pipeline {
 
         stage('Check Deployment Best Practices') {
             steps {
-                withCredentials([file(credentialsId: 'sa-deployment-checker', variable: 'KUBECONFIG_FILE')]) {
+                withCredentials([file(credentialsId: 'sa-deployment-checker', variable: 'KUBECONFIG_FILE_CONTENT')]) {
                     sh '''
-                        echo "Il percorso del kubeconfig è: $KUBECONFIG_FILE"
+                        echo "Usando kubeconfig del SA deployment-checker-sa..."
+                        
+                        # Crea un file temporaneo con il contenuto delle credenziali
+                        TEMP_KUBECONFIG=$(mktemp)
+                        echo "$KUBECONFIG_FILE_CONTENT" > "$TEMP_KUBECONFIG"
+                        
+                        # Esporta la variabile KUBECONFIG per la sessione corrente
+                        export KUBECONFIG="$TEMP_KUBECONFIG"
+                        
                         chmod +x ./check_deployment.sh
-                        ./check_deployment.sh formazione-sou flask-app-example-flask-app-chart "$KUBECONFIG_FILE"
+                        ./check_deployment.sh formazione-sou flask-app-example-flask-app-chart
                     '''
                 }
             }

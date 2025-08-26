@@ -4,7 +4,6 @@ set -e
 # Parametri
 NAMESPACE="${1:-formazione-sou}"
 DEPLOYMENT_NAME="${2:-flask-app-example-flask-app-chart}"
-KUBECONFIG_FILE="${3:-$HOME/.kube/config}"
 
 echo "--- Avvio il controllo delle best practices per il deployment: $DEPLOYMENT_NAME nel namespace: $NAMESPACE ---"
 echo "Usando il file Kubeconfig: $KUBECONFIG_FILE"
